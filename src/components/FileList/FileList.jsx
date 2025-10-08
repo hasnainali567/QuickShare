@@ -7,7 +7,7 @@ const FileList = ({ files }) => {
   console.log(files);
   
   return (
-    <div className="flex flex-wrap">
+    <div className="flex flex-wrap ">
         {files.map((file, i) => <File file={file} key={i}/>)}
     </div>
   )

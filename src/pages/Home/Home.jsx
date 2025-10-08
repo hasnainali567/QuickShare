@@ -43,6 +43,7 @@ const Home = () => {
   const [initialEncryptedText, setInitialEncryptedText] = useState(null);
   const [startListening, setStartListening] = useState(false);
   const { saving, setSaving } = useSaving();
+  const [readonly, setReadonly] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const passRef = useRef(null);
   const docIdRef = useRef(null);
@@ -67,7 +68,7 @@ const Home = () => {
     if (shareableUrl && !id && !isProtected) {
       localStorage.setItem("Url", shareableUrl);
     }
-  }, [shareableUrl]);
+  }, [shareableUrl, id, isProtected]);
 
   useEffect(() => {
     if (!isProtected || !id) return;
@@ -78,6 +79,9 @@ const Home = () => {
         const docSnap = await getDoc(doc(db, "text", id));
         if (docSnap.exists()) {
           setInitialEncryptedText(docSnap.data().text);
+          if (docSnap.data()?.readonly) {
+            setReadonly(docSnap.data()?.readonly);
+          }
           docIdRef.current = id;
           setShareableUrl(`${window.location.origin}/?id=${id}&protected=true`);
         }
@@ -87,7 +91,7 @@ const Home = () => {
     }
 
     fetchProtectedData();
-  }, [isProtected]);
+  }, [isProtected, id]);
 
   useEffect(() => {
     if (isProtected || !id) return;
@@ -133,27 +137,20 @@ const Home = () => {
 
         if (passRef.current !== null) {
           let encryptedText = secureEncrypt(value, passRef.current);
-          if (file) {
-            await updateDoc(doc(db, "text", docId), {
-              text: encryptedText,
-              file: file,
-            });
-          } else {
-            await updateDoc(doc(db, "text", docId), {
-              text: encryptedText,
-            });
-          }
+          console.log(encryptedText);
+          console.log(file);
+          console.log(readonly);
+
+          await updateDoc(doc(db, "text", docId), {
+            text: encryptedText,
+            file: file,
+            readonly: readonly,
+          });
         } else {
-          if (file) {
-            await updateDoc(doc(db, "text", docId), {
-              text: value,
-              file: file,
-            });
-          } else {
-            await updateDoc(doc(db, "text", docId), {
-              text: value,
-            });
-          }
+          await updateDoc(doc(db, "text", docId), {
+            text: value,
+            file: file,
+          });
         }
         messageApi.destroy();
         messageApi.open({
@@ -181,8 +178,11 @@ const Home = () => {
   };
 
   useEffect(() => {
-    if (!file) return;
+    localStorage.setItem('theme', 'dark')
+  }, [])
 
+  useEffect(() => {
+    if (!file) return;
     setBtnText("Save");
   }, [file]);
 
@@ -207,6 +207,30 @@ const Home = () => {
         setValue(text);
         let file = docSnap.data().file;
         setfile(file);
+        // function base64ToBlob(base64, contentType = '') {
+        //   const byteCharacters = atob(base64.split(',')[1]);
+        //   const byteArrays = [];
+
+        //   for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        //     const slice = byteCharacters.slice(offset, offset + 512);
+        //     const byteNumbers = new Array(slice.length);
+        //     for (let i = 0; i < slice.length; i++) {
+        //       byteNumbers[i] = slice.charCodeAt(i);
+        //     }
+        //     byteArrays.push(new Uint8Array(byteNumbers));
+        //   }
+
+        //   return new Blob(byteArrays, { type: contentType });
+        // }
+
+        // const blob = base64ToBlob(file[0]?.file || '', file[0]?.type || '');
+        // console.log(blob);
+        // const link = document.createElement("a");
+        // link.href = URL.createObjectURL(blob);
+        // link.download = "myImage.png";
+        // link.click();
+
+        // URL.revokeObjectURL(link.href);
         let urls = extractUrls(text);
         setUrls([...new Set(urls)]);
         if (value) {
@@ -215,7 +239,11 @@ const Home = () => {
       }
     });
     return () => unsubscribe();
-  }, [docIdRef.current]);
+  }, [isProtected, messageApi]);
+
+
+
+
 
   useEffect(() => {
     if (!startListening) return;
@@ -266,19 +294,6 @@ const Home = () => {
     );
 
     setfile((prev) => [...prev, ...base64Files]);
-
-    // const docRef = doc(db, "files", "shared");
-    // const isDocExist = await checkIfCollectionExists("files");
-
-    // if (isDocExist) {
-    //   await updateDoc(docRef, {
-    //     file: arrayUnion(...base64Files), // spread the array here
-    //   });
-    // } else {
-    //   await setDoc(docRef, {
-    //     file: base64Files, // this should be a flat array of pure objects
-    //   });
-    // }
   };
 
   // useEffect(() => {
@@ -300,6 +315,9 @@ const Home = () => {
       setValue("");
       setUrls([]);
       setBtnText("Save");
+      if (type === "file") {
+        setfile([]);
+      }
       return;
     }
     if (!navigator.onLine) {
@@ -322,9 +340,15 @@ const Home = () => {
       let isDocExist = await checkIfCollectionExists("text");
 
       if (isDocExist) {
-        await updateDoc(doc(db, "text", docId), {
-          text: "",
-        });
+        if (type === 'text') {
+          await updateDoc(doc(db, "text", docId), {
+            text: "",
+          });
+        } else {
+          await updateDoc(doc(db, "text", docId), {
+            file: [],
+          });
+        }
 
         setValue("");
         setBtnText("Save");
@@ -360,7 +384,7 @@ const Home = () => {
     return hashHex;
   }
 
-  const onPopupSave = async (password) => {
+  const onPopupSave = async (password, readonly) => {
     setSaving(true);
     try {
       if (!navigator.onLine) {
@@ -386,32 +410,21 @@ const Home = () => {
 
       if (password !== "") {
         encryptedText = secureEncrypt(value, password);
-        if (file) {
-          docRef = await addDoc(collection(db, "text"), {
-            text: encryptedText,
-            file: file,
-          });
-        } else {
-          docRef = await addDoc(collection(db, "text"), {
-            text: encryptedText,
-          });
-        }
+        docRef = await addDoc(collection(db, "text"), {
+          text: encryptedText,
+          file: file,
+          readonly: readonly,
+        });
 
         passRef.current = password;
         setShareableUrl(
-          `${window.location.origin}/?id=${docRef.id}&protected=true`
+          `${window.location.origin}/?id=${docRef.id}&protected=true&read-only=${readonly}`
         );
       } else {
-        if (file) {
-          docRef = await addDoc(collection(db, "text"), {
-            text: value,
-            file: file,
-          });
-        } else {
-          docRef = await addDoc(collection(db, "text"), {
-            text: value,
-          });
-        }
+        docRef = await addDoc(collection(db, "text"), {
+          text: value,
+          file: file,
+        });
 
         setShareableUrl(`${window.location.origin}/?id=${docRef.id}`);
       }
@@ -515,50 +528,50 @@ const Home = () => {
   };
 
   return (
-    <div className='main-container w-full  min-h-120 flex flex-col mb-10 '>
-      <div className='shadow-xl rounded-2xl overflow-hidden relative'>
+    <div className='main-container w-full flex flex-col mb-10  bg-[#090C11] rounded-2xl '>
+      <div className=' rounded-2xl overflow-hidden relative'>
         {contextHolder}
         <PopUp
           open={savePopup}
           onClose={() => setSavePopup(false)}
-          onSave={(password) => onPopupSave(password)}
+          onSave={(password, readonly) => onPopupSave(password, readonly)}
           ref={popupSaveRef}
         />
         <PasswordPopup
           open={passwordPopupOpen}
           onSubmit={(password) => handlePasswordSubmit(password)}
         />
-        <div className='left-section flex sticky top-0 left-0 right-0 bg-white items-center justify-between'>
-          <div className='flex p-5 px-7'>
-            <h1 className='text-5xl font-medium uppercase'>
+        <div className='left-section flex flex-col-reverse md:flex-row sticky top-0 left-0 right-0 bg-white md:items-center md:justify-between'>
+          <div className='flex p-5 px-8.5 items-baseline'>
+            <h1 className='text-3xl md:text-4xl lg:text-5xl font-medium uppercase'>
               {type === "text" ? "Text" : "File"}
             </h1>
           </div>
-          <div className='flex'>
+          <div className='flex w-full md:w-auto'>
             <div
-              className={type === "text" ? "switcher active" : "switcher"}
+              className={`text-3xl md:text-4xl ${type === "text" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
               onClick={() => setType("text")}
             >
               {type === "file" ? (
-                <LuText size={40} />
+                <LuText />
               ) : (
-                <LuLetterText size={40} className='tab-Icons' />
+                <LuLetterText className='tab-Icons' />
               )}
             </div>
             <div
-              className={type === "file" ? "switcher active" : "switcher"}
+              className={`text-3xl md:text-4xl ${type === "file" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
               onClick={() => setType("file")}
             >
               {type === "text" ? (
-                <LuFile size={40} />
+                <LuFile />
               ) : (
-                <LuFiles size={40} className='tab-Icons' />
+                <LuFiles className='tab-Icons' />
               )}
             </div>
           </div>
         </div>
         {type === "text" ? (
-          <div className='right-section px-9 rounded-b-2xl bg-white'>
+          <div className='right-section px-9  md:py-2 min-h-72 rounded-b-2xl bg-white'>
             <TextArea
               ref={textAreaRef}
               value={value}
@@ -568,33 +581,14 @@ const Home = () => {
               }}
             />
 
-            <div className='w-full flex justify-end gap-5'>
-              {value === "" ? (
-                ""
-              ) : (
-                <button
-                  className='clear-btn px-15 cursor-pointer rounded-lg text-lg capitalize hover:scale-102'
-                  onClick={clearText}
-                >
-                  clear
-                </button>
-              )}
-              <Button
-                onClick={() => {
-                  saveTextBtn();
-                }}
-                disable={value === "" ? true : false}
-                children={btnText}
-              />
-            </div>
             {urls.length > 0 ? (
               <div className='urls-container flex flex-col gap-1'>
                 {urls.length
                   ? urls.map((url, i) => (
-                      <a key={i} href={url} target='_blank'>
-                        {url}
-                      </a>
-                    ))
+                    <a key={i} href={url} target='_blank'>
+                      {url}
+                    </a>
+                  ))
                   : ""}
               </div>
             ) : (
@@ -602,9 +596,9 @@ const Home = () => {
             )}
           </div>
         ) : (
-          <div className='right-section px-9'>
+          <div className='right-section min-h-65 h-65 px-8 py-8'>
             {file.length ? (
-              <div className='withFiles flex flex-wrap min-h-70'>
+              <div className='withFiles flex flex-wrap min-h-60'>
                 <FileList files={file} onDrop={onDrop} />
                 <Dropzone
                   onDrop={onDrop}
@@ -622,7 +616,7 @@ const Home = () => {
               </div>
             ) : (
               <Dropzone
-                className='dropzone min-h-74'
+                className='dropzone h-60'
                 onDrop={(file) => {
                   onDrop(file);
                 }}
@@ -637,7 +631,27 @@ const Home = () => {
           </div>
         )}
       </div>
-      <div>
+      <div className='w-full flex justify-end gap-5 pb-6 px-8 save-container  rounded-2xl'>
+        {(type === 'text' || file.length < 1) && (value === "") ? (
+          ""
+        ) : (
+          <button
+            disabled={readonly}
+            className='clear-btn px-10 md:px-15 cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
+            onClick={clearText}
+          >
+            clear
+          </button>
+        )}
+        <Button
+          onClick={() => {
+            saveTextBtn();
+          }}
+          disable={(readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
+          children={btnText}
+        />
+      </div>
+      <div className="p-8 pb-4 pt-0 ">
         {docIdRef.current ? (
           <SharedUrl
             copyUrl={copyUrl}

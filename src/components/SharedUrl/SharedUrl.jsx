@@ -25,7 +25,7 @@ const SharedUrl = ({ shareableUrl, popoverContent, copyUrl }) => {
       {contextHolder}
       <p
         onClick={onclick}
-        className='url text-md text-xl ps-4 overflow-auto text-blue-500 text-nowrap hover:underline cursor-pointer'
+        className='url  md:text-xl ps-4 overflow-auto text-blue-500 text-nowrap hover:underline cursor-pointer'
       >
         {shareableUrl}
       </p>
@@ -41,7 +41,7 @@ const SharedUrl = ({ shareableUrl, popoverContent, copyUrl }) => {
       ) : (
         <button
           onClick={onclick}
-          className='p-2.5 px-6 text-xl font-medium bg-blue-500 text-white rounded-lg cursor-pointer'
+          className='p-1.5 md:p-2.5 px-5 md:text-xl font-medium bg-blue-500 text-white rounded-lg cursor-pointer'
         >
           Copy
         </button>

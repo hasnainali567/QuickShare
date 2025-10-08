@@ -54,12 +54,27 @@
   }
 }
 
+
 .dark {
   .ant-modal-content {
     background-color: rgb(26, 26, 26) !important;
     .popup-title {
       color: white;
       background: rgb(26, 26, 26);
+    }
+
+    .read-only {
+      color: white;
+    }
+
+    .ant-modal-close {
+      .ant-modal-close-x {
+        color: white;
+      }
+
+      &:hover {
+        background-color: #a6d2fc2d;
+      }
     }
 
     .ant-input-affix-wrapper {
@@ -86,14 +101,15 @@
         background-color: #569bdb !important;
       }
       &:disabled {
-        background-color: rgb(219, 219, 219);
-        color: #f7f1ec;
+        background-color: rgb(219, 219, 219) !important;
+        color: #f7f1ec !important;
       }
     }
 
     .ant-btn-default {
       font-size: medium;
       padding: 20px 20px;
+      
       &:hover {
         color: #77bdff;
       }
@@ -116,4 +132,5 @@
       }
     }
   }
+
 }

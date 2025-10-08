@@ -1,10 +1,14 @@
+.dark {
+  .main-container {
+    background-color: #090C11 !important;
+  }
+}
 .main-container {
+  background-color: #fff;
   width: 100%;
   .left-section {
     .switcher {
       cursor: pointer;
-      width: max-content;
-      padding: 30px;
       img {
         height: 35px;
       }
@@ -28,6 +32,13 @@
     div {
       .clear-btn {
         background-color: #c9c9c9;
+
+        &:disabled {
+          background-color: #dcdcdc;
+          color: white;
+          cursor: not-allowed;
+          transform: scale(1) !important;
+        }
       }
     }
 
@@ -49,7 +60,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-bottom: 20px;
 
       div {
         display: flex;
@@ -68,6 +78,8 @@
         }
       }
     }
+
+    
 
     .withFiles {
       .dropzone {

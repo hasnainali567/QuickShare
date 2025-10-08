@@ -12,15 +12,15 @@ const Header = () => {
   
   return (
     <div className='header w-full'>
-      <div className="img-conatiner">
-        <Link to={'/'}><img className="logo-img" src={LOGO} /></Link>
+      <div className="img-conatiner h-20 w-24 md:h-24 md:w-32">
+        <Link to={'/'}><img className="logo-img w-full object-cover" src={LOGO} /></Link>
       </div>
       <div className="list-container">
-        <ul>
-            <li>
+        <ul >
+            <li className="hidden md:block">
                 <Link to={'/how-it-works'}>How it Works / Precuations</Link>
             </li>
-            <li>
+            <li className="hidden md:block">
                 <Link to={'/feedback'}>Feedback</Link>
             </li>
             <li>
