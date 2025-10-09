@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   TextArea,
@@ -27,7 +27,7 @@ import { LuFile, LuFiles, LuLetterText, LuText } from "react-icons/lu";
 
 import "./style.scss";
 import { useSaving } from "../../context/SavingContext.jsx";
-import { addDoc } from "firebase/firestore";
+import { addDoc, deleteDoc } from "firebase/firestore";
 
 const Home = () => {
   const [type, setType] = useState("text");
@@ -53,7 +53,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
-  const isProtected = searchParams.get("protected");
+  const [isProtected, setIsProtected] = useState(searchParams.get("protected"));
 
   useEffect(() => {
     const url = localStorage.getItem("Url");
@@ -79,6 +79,7 @@ const Home = () => {
         const docSnap = await getDoc(doc(db, "text", id));
         if (docSnap.exists()) {
           setInitialEncryptedText(docSnap.data().text);
+          setIsProtected(docSnap.data().isProtected)
           if (docSnap.data()?.readonly) {
             setReadonly(docSnap.data()?.readonly);
           }
@@ -141,11 +142,17 @@ const Home = () => {
           console.log(file);
           console.log(readonly);
 
+          if(type === 'text') {
+          await updateDoc(doc(db, "text", docId), {
+            text: encryptedText,
+          });
+        } else if (type === 'file') {
           await updateDoc(doc(db, "text", docId), {
             text: encryptedText,
             file: file,
             readonly: readonly,
           });
+        }
         } else {
           await updateDoc(doc(db, "text", docId), {
             text: value,
@@ -177,6 +184,37 @@ const Home = () => {
     }
   };
 
+  const base64ToBlob = useCallback((base64, contentType = '') => {
+    const byteCharacters = atob(base64.split(',')[1]);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      byteArrays.push(new Uint8Array(byteNumbers));
+    }
+
+    return new Blob(byteArrays, { type: contentType });
+  }, []);
+
+
+  const downloadFiles = () => {
+    if (!file.length) return;
+    file.forEach((file) => {
+      const blob = base64ToBlob(file.file || '', file.type || '');
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = file.name;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+    });
+
+  }
+
   useEffect(() => {
     localStorage.setItem('theme', 'dark')
   }, [])
@@ -207,30 +245,6 @@ const Home = () => {
         setValue(text);
         let file = docSnap.data().file;
         setfile(file);
-        // function base64ToBlob(base64, contentType = '') {
-        //   const byteCharacters = atob(base64.split(',')[1]);
-        //   const byteArrays = [];
-
-        //   for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        //     const slice = byteCharacters.slice(offset, offset + 512);
-        //     const byteNumbers = new Array(slice.length);
-        //     for (let i = 0; i < slice.length; i++) {
-        //       byteNumbers[i] = slice.charCodeAt(i);
-        //     }
-        //     byteArrays.push(new Uint8Array(byteNumbers));
-        //   }
-
-        //   return new Blob(byteArrays, { type: contentType });
-        // }
-
-        // const blob = base64ToBlob(file[0]?.file || '', file[0]?.type || '');
-        // console.log(blob);
-        // const link = document.createElement("a");
-        // link.href = URL.createObjectURL(blob);
-        // link.download = "myImage.png";
-        // link.click();
-
-        // URL.revokeObjectURL(link.href);
         let urls = extractUrls(text);
         setUrls([...new Set(urls)]);
         if (value) {
@@ -275,12 +289,23 @@ const Home = () => {
   };
 
   const onDrop = async (acceptedFiles) => {
-    messageApi.destroy();
-    messageApi.open({
-      type: "info",
-      content: "Don't Forget to save!",
-      duration: 3,
-    });
+    if (acceptedFiles && acceptedFiles.length + file.length > 2) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "You can only upload 2 files!",
+      });
+      return;
+    }
+    if (acceptedFiles && acceptedFiles.some(file => file.size > 2 * 1024 * 1024)) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "Each file must be less than 2 MB!",
+      });
+      return;
+    }
+
     const base64Files = await Promise.all(
       acceptedFiles.map(async (file) => {
         const base64 = await convertToBase64(file);
@@ -293,20 +318,53 @@ const Home = () => {
       })
     );
 
-    setfile((prev) => [...prev, ...base64Files]);
+    let updatedFiles = [...file, ...base64Files];
+    if (updatedFiles.length > 2) {
+      updatedFiles = updatedFiles.slice(0, 2);
+    }
+    setfile(updatedFiles);
+
+    try {
+      messageApi.open({
+        type: "loading",
+        content: "Uploading...",
+        duration: 0,
+      });
+      setSaving(true);
+      if (!navigator.onLine) {
+        messageApi.destroy();
+        messageApi.open({
+          type: "error",
+          content: "Failed to upload: No internet connection!",
+        });
+        setSaving(false);
+        return;
+      }
+      let isDocExist = await checkIfCollectionExists("text");
+      if (isDocExist && docIdRef.current) {
+        await updateDoc(doc(db, "text", docIdRef.current), {
+          file: arrayUnion(...base64Files),
+        });
+      }
+      messageApi.destroy();
+      messageApi.open({
+        type: "success",
+        content: "Uploaded Successfully",
+      });
+      setSaving(false);
+
+    } catch (error) {
+      console.error("Error during file upload:", error);
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "Error uploading files. Please try again.",
+      });
+      setSaving(false);
+      return;
+    }
+    
   };
-
-  // useEffect(() => {
-  //   if (type !== "file") return;
-
-  //   const unsub = onSnapshot(doc(db, "files", "shared"), (docSnap) => {
-  //     if (docSnap.exists()) {
-  //       setfile(docSnap.data().file || []);
-  //     }
-  //   });
-
-  //   return () => unsub();
-  // }, [type]);
 
   const clearText = async () => {
     let docId = docIdRef.current;
@@ -373,16 +431,16 @@ const Home = () => {
     return text.match(urlRegex) || [];
   };
 
-  async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return hashHex;
-  }
+  // async function hashPassword(password) {
+  //   const encoder = new TextEncoder();
+  //   const data = encoder.encode(password);
+  //   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  //   const hashArray = Array.from(new Uint8Array(hashBuffer));
+  //   const hashHex = hashArray
+  //     .map((b) => b.toString(16).padStart(2, "0"))
+  //     .join("");
+  //   return hashHex;
+  // }
 
   const onPopupSave = async (password, readonly) => {
     setSaving(true);
@@ -414,6 +472,7 @@ const Home = () => {
           text: encryptedText,
           file: file,
           readonly: readonly,
+          isProtected
         });
 
         passRef.current = password;
@@ -527,6 +586,44 @@ const Home = () => {
     window.navigator.clipboard.writeText(shareableUrl);
   };
 
+  const deleteDocument = async () => {
+    if (!navigator.onLine) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "No internet connection!",
+      });
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "text", docIdRef.current));
+      localStorage.removeItem("Url");
+      setSaving(false);
+      setType("text");
+      setValue("");
+      setfile([]);
+      setUrls([]);
+      setBtnText("Save");
+      docIdRef.current = null;
+      passRef.current = null;
+      setShareableUrl("");
+      navigate("/");
+      messageApi.destroy();
+      messageApi.open({
+        type: "success",
+        content: "Document deleted successfully",
+      });
+    } catch (error) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "Failed to delete document",
+      });
+      console.error("Error deleting document: ", error);
+
+    }
+  };
+
   return (
     <div className='main-container w-full flex flex-col mb-10  bg-[#090C11] rounded-2xl '>
       <div className=' rounded-2xl overflow-hidden relative'>
@@ -599,10 +696,10 @@ const Home = () => {
           <div className='right-section min-h-65 h-65 px-8 py-8'>
             {file.length ? (
               <div className='withFiles flex flex-wrap min-h-60'>
-                <FileList files={file} onDrop={onDrop} />
+                <FileList downloadFun={base64ToBlob} files={file} onDrop={onDrop} />
                 <Dropzone
                   onDrop={onDrop}
-                  className='dropzone'
+                  className={`dropzone`}
                   title={
                     <div className='dropzone-text'>
                       <FaPlus />
@@ -632,24 +729,42 @@ const Home = () => {
         )}
       </div>
       <div className='w-full flex justify-end gap-5 pb-6 px-8 save-container  rounded-2xl'>
+        {value === "" && file.length < 1 && docIdRef.current ? (
+          <button
+            disabled={readonly}
+            className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
+            onClick={deleteDocument}
+          >
+            Delete doc
+          </button>
+        ) : ''}
         {(type === 'text' || file.length < 1) && (value === "") ? (
           ""
         ) : (
           <button
             disabled={readonly}
-            className='clear-btn px-10 md:px-15 cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
+            className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
             onClick={clearText}
           >
             clear
           </button>
         )}
-        <Button
-          onClick={() => {
-            saveTextBtn();
-          }}
-          disable={(readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
-          children={btnText}
-        />
+        {type === "file" && file.length > 0 && docIdRef.current ? (
+          <Button
+            onClick={() => {
+              downloadFiles();
+            }}
+            disable={saving || (readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
+            children={'Download All'}
+          />) : (
+          <Button
+            onClick={() => {
+              saveTextBtn();
+            }}
+            disable={(readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
+            children={btnText}
+          />
+        )}
       </div>
       <div className="p-8 pb-4 pt-0 ">
         {docIdRef.current ? (

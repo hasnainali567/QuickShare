@@ -24,6 +24,13 @@
         width: 120px;
         display: flex;
         overflow: hidden;
+        div {
+            background-color: #FBF7F2;
+            color: #77BDFF;
+            svg {
+                color: #333;
+            }
+        }
         img {
             height: 100%;
             width: 100%;
@@ -38,6 +45,15 @@
         background: #111;
         &:hover {
             background-color: #222;
+        }
+
+        .img-file {
+            div {
+                background-color: #77BDFF;
+                svg {
+                    color: #333;
+                }
+            }
         }
 
         .file-name {

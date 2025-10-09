@@ -1,5 +1,5 @@
 .text-area {
-    color: #ddd;
+    color: #333;
     width: 100%;
     min-height: 210px;
     resize: none;
@@ -17,5 +17,11 @@
     &::selection{
         background-color:#638eff;
         color: white;
+    }
+}
+
+.dark {
+    .text-area {
+        color: #ddd;
     }
 }

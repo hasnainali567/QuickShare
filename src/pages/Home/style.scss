@@ -1,6 +1,6 @@
 .dark {
   .main-container {
-    background-color: #090C11 !important;
+    background-color: #090c11 !important;
   }
 }
 .main-container {
@@ -18,6 +18,22 @@
     }
   }
 
+  div {
+    .clear-btn {
+      background-color: #eee;
+      &:hover {
+        background-color: #ddd;
+      }
+
+      &:disabled {
+        background-color: #dcdcdc;
+        color: white;
+        cursor: not-allowed;
+        transform: scale(1) !important;
+      }
+    }
+  }
+
   .right-section {
     padding-bottom: 30px;
     width: 100%;
@@ -27,19 +43,6 @@
       font-size: 50px;
       font-weight: 700;
       margin-bottom: 20px;
-    }
-
-    div {
-      .clear-btn {
-        background-color: #c9c9c9;
-
-        &:disabled {
-          background-color: #dcdcdc;
-          color: white;
-          cursor: not-allowed;
-          transform: scale(1) !important;
-        }
-      }
     }
 
     .urls-container {
@@ -78,8 +81,6 @@
         }
       }
     }
-
-    
 
     .withFiles {
       .dropzone {
@@ -138,12 +139,16 @@
       }
     }
   }
-  .right-section {
-    div {
-      .clear-btn {
-        background-color: #3333339c;
+  div {
+    .clear-btn {
+      background-color: #222 !important;
+      &:hover {
+
+        background-color: #333 !important;
       }
     }
+  }
+  .right-section {
     background-color: #090c11 !important;
     .withFiles {
       .dropzone {

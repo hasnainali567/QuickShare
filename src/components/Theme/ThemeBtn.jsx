@@ -10,7 +10,7 @@ const ThemeBtn = ({ theme, themeToggle }) => {
   return (
     <div className='theme-btn p-2 rounded-full text-xl flex text-white cursor-pointer' onClick={themeToggle}>
         {isDark ? <FaSun /> : <FaCloudMoon />}
-    </div>
+    </div>  
   )
 }
 
