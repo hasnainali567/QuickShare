@@ -53,7 +53,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
-  const isProtected = searchParams.get("protected");
+  const [isProtected, setIsProtected] = useState(searchParams.get("protected"));
 
   useEffect(() => {
     const url = localStorage.getItem("Url");
