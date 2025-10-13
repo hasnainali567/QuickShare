@@ -6,8 +6,8 @@
   padding-right: 35px;
   .img-conatiner {
     .logo-img {
-      object-fit: contain;
-      object-position: left;
+      height: 100%;
+      object-fit: cover;
     }
   }
 
