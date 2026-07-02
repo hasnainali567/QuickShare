@@ -3,8 +3,8 @@
 **Securely share files and text with optional password protection.**
 QuickShare is a modern, lightweight web app that lets users share sensitive information and files easily with encryption and real-time updates — just generate a secure URL and optionally add a password!
 
-🌐 [Live Project](https://locknsend.netlify.app)
-📦 [GitHub Repository](https://github.com/hasnainali567/LocknSend)
+🌐 [Live Project](https://quickshare-app.netlify.app)
+📦 [GitHub Repository](https://github.com/hasnainali567/quickshare)
 
 ---
 
