@@ -1,9 +1,9 @@
-# 🔐 LocknSend
+# 🔐 QuickShare
 
-**Securely share files and text with optional password protection.**  
-LocknSend is a modern, lightweight web app that lets users share sensitive information and files easily with encryption and real-time updates — just generate a secure URL and optionally add a password!
+**Securely share files and text with optional password protection.**
+QuickShare is a modern, lightweight web app that lets users share sensitive information and files easily with encryption and real-time updates — just generate a secure URL and optionally add a password!
 
-🌐 [Live Project](https://locknsend.netlify.app)  
+🌐 [Live Project](https://locknsend.netlify.app)
 📦 [GitHub Repository](https://github.com/hasnainali567/LocknSend)
 
 ---
@@ -33,8 +33,8 @@ LocknSend is a modern, lightweight web app that lets users share sensitive infor
 
 ## 📷 Preview
 
-![LocknSend Preview - Light](./assets/preview-light.png)  
-![LocknSend Preview - Dark](./assets/preview-dark.png)
+![QuickShare Preview - Light](./assets/preview-light.png)
+![QuickShare Preview - Dark](./assets/preview-dark.png)
 
 ---
 
@@ -45,3 +45,4 @@ git clone https://github.com/hasnainali567/LocknSend.git
 cd locknsend
 npm install
 npm run dev
+```

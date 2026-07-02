@@ -21,6 +21,13 @@
       li {
         list-style-type: none;
         transition: all ease;
+        button {
+          border: 0;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+        }
         &:hover {
           color: rgb(160, 138, 119);
           transform: scale(1.05);
@@ -36,7 +43,7 @@
         li {
           color: white;
           &:hover {
-            color: #77bdff;
+            color: #6050D6;
           }
         }
       }

@@ -8,7 +8,7 @@ const AppLayout = ({ children }) => {
   return (
     <ThemeProvider>
       <SavingProvider>
-        <div className='flex flex-col max-w-5xl w-screen mx-auto p-5 py-0 pb-10'>
+        <div className='flex flex-col max-w-6xl w-full mx-auto px-4 md:px-6 py-0 pb-10'>
           <Header />
           <main className="flex-grow">
             {children}

@@ -10,6 +10,8 @@ const PasswordPopup = ({ open, onSubmit }) => {
       open={open}
       title={<p className="pass-popup-title">Enter Password</p>}
       closable={false}
+      maskClosable={false}
+      keyboard={false}
       footer={null}
     >
       <Input.Password

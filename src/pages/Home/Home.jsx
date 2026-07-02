@@ -20,6 +20,8 @@ import {
   getDocs,
   getDoc,
   arrayUnion,
+  query,
+  where,
 } from "../../config/firebaseConfig.js";
 import { message } from "antd";
 import { FaPlus } from "react-icons/fa6";
@@ -28,6 +30,7 @@ import { LuFile, LuFiles, LuLetterText, LuText } from "react-icons/lu";
 import "./style.scss";
 import { useSaving } from "../../context/SavingContext.jsx";
 import { addDoc, deleteDoc } from "firebase/firestore";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const Home = () => {
   const [type, setType] = useState("text");
@@ -42,7 +45,10 @@ const Home = () => {
   const [passwordPopupOpen, setPasswordPopupOpen] = useState(false);
   const [initialEncryptedText, setInitialEncryptedText] = useState(null);
   const [startListening, setStartListening] = useState(false);
+  const [myDocs, setMyDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
   const { saving, setSaving } = useSaving();
+  const { user } = useAuth();
   const [readonly, setReadonly] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const passRef = useRef(null);
@@ -54,6 +60,26 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
   const [isProtected, setIsProtected] = useState(searchParams.get("protected"));
+  const isLockedProtectedDoc = Boolean(id && isProtected && !startListening);
+  const isReadOnlyDoc = Boolean(readonly && docIdRef.current);
+
+  useEffect(() => {
+    setValue("");
+    setfile([]);
+    setUrls([]);
+    setBtnText("Save");
+    setHasSavedBefore(false);
+    setStartListening(false);
+    setPasswordPopupOpen(false);
+    setInitialEncryptedText(null);
+    setReadonly(false);
+    passRef.current = null;
+    docIdRef.current = null;
+
+    if (textAreaRef.current) {
+      textAreaRef.current.value = "";
+    }
+  }, [id]);
 
   useEffect(() => {
     const url = localStorage.getItem("Url");
@@ -71,6 +97,31 @@ const Home = () => {
   }, [shareableUrl, id, isProtected]);
 
   useEffect(() => {
+    if (!user) {
+      setMyDocs([]);
+      return;
+    }
+
+    setDocsLoading(true);
+    const docsQuery = query(collection(db, "text"), where("ownerUid", "==", user.uid));
+    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
+      const docs = snapshot.docs
+        .map((docSnapshot) => ({
+          id: docSnapshot.id,
+          ...docSnapshot.data(),
+        }))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      setMyDocs(docs);
+      setDocsLoading(false);
+    }, () => {
+      setDocsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
     if (!isProtected || !id) return;
 
     async function fetchProtectedData() {
@@ -79,10 +130,7 @@ const Home = () => {
         const docSnap = await getDoc(doc(db, "text", id));
         if (docSnap.exists()) {
           setInitialEncryptedText(docSnap.data().text);
-          setIsProtected(docSnap.data().isProtected)
-          if (docSnap.data()?.readonly) {
-            setReadonly(docSnap.data()?.readonly);
-          }
+          setReadonly(Boolean(docSnap.data()?.readonly));
           docIdRef.current = id;
           setShareableUrl(`${window.location.origin}/?id=${id}&protected=true`);
         }
@@ -96,11 +144,17 @@ const Home = () => {
 
   useEffect(() => {
     if (isProtected || !id) return;
-    if (id) {
+    async function fetchDocState() {
+      const docSnap = await getDoc(doc(db, "text", id));
+      if (docSnap.exists()) {
+        setReadonly(Boolean(docSnap.data()?.readonly));
+      }
       setHasSavedBefore(true);
       docIdRef.current = id;
       setShareableUrl(`${window.location.origin}/?id=${docIdRef.current}`);
     }
+
+    fetchDocState();
   }, [id, isProtected]);
 
   async function checkIfCollectionExists(collectionName) {
@@ -109,6 +163,15 @@ const Home = () => {
   }
 
   const saveTextBtn = async () => {
+    if (isReadOnlyDoc) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "This document is read-only.",
+      });
+      return;
+    }
+
     if (!hasSavedBefore) {
       setSavePopup(true);
       return;
@@ -142,21 +205,32 @@ const Home = () => {
           console.log(file);
           console.log(readonly);
 
-          if(type === 'text') {
-          await updateDoc(doc(db, "text", docId), {
-            text: encryptedText,
-          });
-        } else if (type === 'file') {
-          await updateDoc(doc(db, "text", docId), {
-            text: encryptedText,
-            file: file,
-            readonly: readonly,
-          });
-        }
+          if (type === 'text') {
+            await updateDoc(doc(db, "text", docId), {
+              text: encryptedText,
+              readonly: readonly,
+              ownerUid: user?.uid,
+              ownerEmail: user?.email || null,
+              ownerName: user?.displayName || user?.email || "QuickShare user",
+            });
+          } else if (type === 'file') {
+            await updateDoc(doc(db, "text", docId), {
+              text: encryptedText,
+              file: file,
+              readonly: readonly,
+              ownerUid: user?.uid,
+              ownerEmail: user?.email || null,
+              ownerName: user?.displayName || user?.email || "QuickShare user",
+            });
+          }
         } else {
           await updateDoc(doc(db, "text", docId), {
             text: value,
             file: file,
+            readonly: readonly,
+            ownerUid: user?.uid,
+            ownerEmail: user?.email || null,
+            ownerName: user?.displayName || user?.email || "QuickShare user",
           });
         }
         messageApi.destroy();
@@ -245,6 +319,7 @@ const Home = () => {
         setValue(text);
         let file = docSnap.data().file;
         setfile(file);
+        setReadonly(Boolean(docSnap.data()?.readonly));
         let urls = extractUrls(text);
         setUrls([...new Set(urls)]);
         if (value) {
@@ -272,6 +347,7 @@ const Home = () => {
         setBtnText("Copy");
         let file = docSnap.data().file;
         setfile(file);
+        setReadonly(Boolean(docSnap.data()?.readonly));
       }
     });
     return () => unsubscribe();
@@ -289,6 +365,15 @@ const Home = () => {
   };
 
   const onDrop = async (acceptedFiles) => {
+    if (isReadOnlyDoc) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "This document is read-only.",
+      });
+      return;
+    }
+
     if (acceptedFiles && acceptedFiles.length + file.length > 2) {
       messageApi.destroy();
       messageApi.open({
@@ -363,10 +448,19 @@ const Home = () => {
       setSaving(false);
       return;
     }
-    
+
   };
 
   const clearText = async () => {
+    if (isReadOnlyDoc) {
+      messageApi.destroy();
+      messageApi.open({
+        type: "error",
+        content: "This document is read-only.",
+      });
+      return;
+    }
+
     let docId = docIdRef.current;
 
     if (!docId) {
@@ -472,7 +566,11 @@ const Home = () => {
           text: encryptedText,
           file: file,
           readonly: readonly,
-          isProtected
+          isProtected,
+          ownerUid: user?.uid,
+          ownerEmail: user?.email || null,
+          ownerName: user?.displayName || user?.email || "QuickShare user",
+          createdAt: Date.now(),
         });
 
         passRef.current = password;
@@ -483,6 +581,11 @@ const Home = () => {
         docRef = await addDoc(collection(db, "text"), {
           text: value,
           file: file,
+          readonly: readonly,
+          ownerUid: user?.uid,
+          ownerEmail: user?.email || null,
+          ownerName: user?.displayName || user?.email || "QuickShare user",
+          createdAt: Date.now(),
         });
 
         setShareableUrl(`${window.location.origin}/?id=${docRef.id}`);
@@ -606,6 +709,7 @@ const Home = () => {
       setBtnText("Save");
       docIdRef.current = null;
       passRef.current = null;
+      setReadonly(false);
       setShareableUrl("");
       navigate("/");
       messageApi.destroy();
@@ -624,9 +728,72 @@ const Home = () => {
     }
   };
 
+  const openDocFromList = (docItem) => {
+    const params = new URLSearchParams();
+    params.set("id", docItem.id);
+
+    if (docItem.isProtected) {
+      params.set("protected", "true");
+    }
+
+    navigate(`/?${params.toString()}`);
+  };
+
+  const copyDocLink = async (docItem) => {
+    const params = new URLSearchParams();
+    params.set("id", docItem.id);
+
+    if (docItem.isProtected) {
+      params.set("protected", "true");
+    }
+
+    await window.navigator.clipboard.writeText(`${window.location.origin}/?${params.toString()}`);
+    messageApi.destroy();
+    messageApi.open({
+      type: "success",
+      content: "Link copied",
+    });
+  };
+
+  const formatDocPreview = (docItem) => {
+    if (docItem.isProtected) {
+      return "Protected document";
+    }
+
+    if (docItem.text && docItem.text.length) {
+      return docItem.text.slice(0, 90);
+    }
+
+    if (docItem.file?.length) {
+      return `${docItem.file.length} file${docItem.file.length > 1 ? "s" : ""}`;
+    }
+
+    return "Empty document";
+  };
+
+  const formatDocDate = (value) => {
+    if (!value) return "Just now";
+
+    return new Date(value).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
-    <div className='main-container w-full flex flex-col mb-10  bg-[#090C11] rounded-2xl '>
-      <div className=' rounded-2xl overflow-hidden relative'>
+    <div className='main-container app-workspace w-full flex flex-col mb-10 rounded-3xl'>
+      <div className='workspace-hero'>
+        <div>
+          <p className='eyebrow'>Private workspace</p>
+          <h2>Send text and files in a clean, focused flow.</h2>
+        </div>
+        <p className='workspace-copy'>
+          Keep your share links, notes, and files in one place with a softer interface that matches the rest of the product.
+        </p>
+      </div>
+
+      <div className='workspace-panel rounded-3xl overflow-hidden relative'>
         {contextHolder}
         <PopUp
           open={savePopup}
@@ -638,145 +805,211 @@ const Home = () => {
           open={passwordPopupOpen}
           onSubmit={(password) => handlePasswordSubmit(password)}
         />
-        <div className='left-section flex flex-col-reverse md:flex-row sticky top-0 left-0 right-0 bg-white md:items-center md:justify-between'>
-          <div className='flex p-5 px-8.5 items-baseline'>
-            <h1 className='text-3xl md:text-4xl lg:text-5xl font-medium uppercase'>
-              {type === "text" ? "Text" : "File"}
-            </h1>
-          </div>
-          <div className='flex w-full md:w-auto'>
-            <div
-              className={`text-3xl md:text-4xl ${type === "text" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
-              onClick={() => setType("text")}
-            >
-              {type === "file" ? (
-                <LuText />
-              ) : (
-                <LuLetterText className='tab-Icons' />
-              )}
-            </div>
-            <div
-              className={`text-3xl md:text-4xl ${type === "file" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
-              onClick={() => setType("file")}
-            >
-              {type === "text" ? (
-                <LuFile />
-              ) : (
-                <LuFiles className='tab-Icons' />
-              )}
-            </div>
-          </div>
-        </div>
-        {type === "text" ? (
-          <div className='right-section px-9  md:py-2 min-h-72 rounded-b-2xl bg-white'>
-            <TextArea
-              ref={textAreaRef}
-              value={value}
-              onChangeText={(value) => {
-                setValue(value);
-                setBtnText("Save");
-              }}
-            />
 
-            {urls.length > 0 ? (
-              <div className='urls-container flex flex-col gap-1'>
-                {urls.length
-                  ? urls.map((url, i) => (
-                    <a key={i} href={url} target='_blank'>
-                      {url}
-                    </a>
-                  ))
-                  : ""}
+        {isLockedProtectedDoc ? (
+          <div className='protected-lock-view'>
+            <p className='eyebrow'>Protected document</p>
+            <h2>This share is locked until the password is entered.</h2>
+            <p>
+              The encrypted content stays hidden until it is successfully unlocked.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className='left-section flex flex-col-reverse md:flex-row sticky top-0 left-0 right-0 md:items-center md:justify-between'>
+              <div className='flex p-5 px-8.5 items-baseline'>
+                <h1 className='text-3xl md:text-4xl lg:text-5xl font-medium uppercase'>
+                  {type === "text" ? "Text" : "File"}
+                </h1>
               </div>
+              <div className='flex w-full md:w-auto'>
+                <div
+                  className={`text-3xl md:text-4xl ${type === "text" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
+                  onClick={() => setType("text")}
+                >
+                  {type === "file" ? (
+                    <LuText />
+                  ) : (
+                    <LuLetterText className='tab-Icons' />
+                  )}
+                </div>
+                <div
+                  className={`text-3xl md:text-4xl ${type === "file" ? "switcher active w-1/2 md:w-auto  flex md:block md:p-8 justify-center py-4 bg-black/20 md:bg-transparent" : "switcher w-1/2 md:w-auto md:p-8 flex justify-center py-4"}`}
+                  onClick={() => setType("file")}
+                >
+                  {type === "text" ? (
+                    <LuFile />
+                  ) : (
+                    <LuFiles className='tab-Icons' />
+                  )}
+                </div>
+              </div>
+            </div>
+            {type === "text" ? (
+              <div className='right-section px-9  md:py-2 min-h-72 rounded-b-2xl'>
+                <TextArea
+                  ref={textAreaRef}
+                  value={value}
+                  disabled={isReadOnlyDoc}
+                  onChangeText={(value) => {
+                    if (isReadOnlyDoc) return;
+                    setValue(value);
+                    setBtnText("Save");
+                  }}
+                />
+
+                {urls.length > 0 ? (
+                  <div className='urls-container flex flex-col gap-1'>
+                    {urls.length
+                      ? urls.map((url, i) => (
+                        <a key={i} href={url} target='_blank'>
+                          {url}
+                        </a>
+                      ))
+                      : ""}
+                  </div>
+                ) : (
+                  ""
+                )}
+              </div>
+            ) : (
+              <div className='right-section min-h-65 h-65 px-8 py-8'>
+                {file.length ? (
+                  <div className='withFiles flex flex-wrap min-h-60'>
+                    <FileList downloadFun={base64ToBlob} files={file} onDrop={onDrop} />
+                    <Dropzone
+                      onDrop={onDrop}
+                      className={`dropzone`}
+                      disabled={isReadOnlyDoc}
+                      title={
+                        <div className='dropzone-text'>
+                          <FaPlus />
+                          <div>
+                            <span>Add File</span>
+                            <span>(upto 5 Mb )</span>
+                          </div>
+                        </div>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Dropzone
+                    className='dropzone h-60'
+                    onDrop={(file) => {
+                      onDrop(file);
+                    }}
+                    disabled={isReadOnlyDoc}
+                    title={
+                      <p>
+                        Drag and drop any files up to 2 files, 5Mbs each or{" "}
+                        <span className=''>Browse Upgrade</span> to get more space
+                      </p>
+                    }
+                  />
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {!isLockedProtectedDoc && (
+        <>
+          <div className='w-full flex justify-end gap-4 md:gap-5 pt-6 mt-6 pb-6 px-8 save-container rounded-2xl'>
+            {value === "" && file.length < 1 && docIdRef.current ? (
+              <button
+                disabled={isReadOnlyDoc}
+                className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
+                onClick={deleteDocument}
+              >
+                Delete doc
+              </button>
+            ) : ''}
+            {(type === 'text' || file.length < 1) && (value === "") ? (
+              ""
+            ) : (
+              <button
+                disabled={isReadOnlyDoc}
+                className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
+                onClick={clearText}
+              >
+                clear
+              </button>
+            )}
+            {type === "file" && file.length > 0 && docIdRef.current ? (
+              <Button
+                onClick={() => {
+                  downloadFiles();
+                }}
+                disable={saving || (isReadOnlyDoc || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
+                children={'Download All'}
+              />) : (
+              <Button
+                onClick={() => {
+                  saveTextBtn();
+                }}
+                disable={(isReadOnlyDoc || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
+                children={btnText}
+              />
+            )}
+          </div>
+          <div className="p-8 pb-4 pt-0 ">
+            {docIdRef.current ? (
+              <SharedUrl
+                copyUrl={copyUrl}
+                popoverContent={popoverContent}
+                shareableUrl={shareableUrl}
+              />
             ) : (
               ""
             )}
           </div>
-        ) : (
-          <div className='right-section min-h-65 h-65 px-8 py-8'>
-            {file.length ? (
-              <div className='withFiles flex flex-wrap min-h-60'>
-                <FileList downloadFun={base64ToBlob} files={file} onDrop={onDrop} />
-                <Dropzone
-                  onDrop={onDrop}
-                  className={`dropzone`}
-                  title={
-                    <div className='dropzone-text'>
-                      <FaPlus />
-                      <div>
-                        <span>Add File</span>
-                        <span>(upto 5 Mb )</span>
-                      </div>
-                    </div>
-                  }
-                />
-              </div>
-            ) : (
-              <Dropzone
-                className='dropzone h-60'
-                onDrop={(file) => {
-                  onDrop(file);
-                }}
-                title={
-                  <p>
-                    Drag and drop any files up to 2 files, 5Mbs each or{" "}
-                    <span className=''>Browse Upgrade</span> to get more space
-                  </p>
-                }
-              />
-            )}
+        </>
+      )}
+
+      {user && !isLockedProtectedDoc && (
+        <div className="docs-panel rounded-3xl mt-6 p-6 md:p-8">
+          <div className="docs-panel-header">
+            <div>
+              <p className="eyebrow">Your docs</p>
+              <h3>Recover anything you created from this account.</h3>
+            </div>
+            <span>{docsLoading ? "Loading..." : `${myDocs.length} saved`}</span>
           </div>
-        )}
-      </div>
-      <div className='w-full flex justify-end gap-5 pb-6 px-8 save-container  rounded-2xl'>
-        {value === "" && file.length < 1 && docIdRef.current ? (
-          <button
-            disabled={readonly}
-            className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
-            onClick={deleteDocument}
-          >
-            Delete doc
-          </button>
-        ) : ''}
-        {(type === 'text' || file.length < 1) && (value === "") ? (
-          ""
-        ) : (
-          <button
-            disabled={readonly}
-            className='clear-btn p-2 md:py-3 px-10 md:px-15  cursor-pointer rounded-lg md:text-lg capitalize hover:scale-102 disabled:bg-gray-500'
-            onClick={clearText}
-          >
-            clear
-          </button>
-        )}
-        {type === "file" && file.length > 0 && docIdRef.current ? (
-          <Button
-            onClick={() => {
-              downloadFiles();
-            }}
-            disable={saving || (readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
-            children={'Download All'}
-          />) : (
-          <Button
-            onClick={() => {
-              saveTextBtn();
-            }}
-            disable={(readonly || (value === "" && file.length < 1) ? true : false) || (type === "text" && value === '')}
-            children={btnText}
-          />
-        )}
-      </div>
-      <div className="p-8 pb-4 pt-0 ">
-        {docIdRef.current ? (
-          <SharedUrl
-            copyUrl={copyUrl}
-            popoverContent={popoverContent}
-            shareableUrl={shareableUrl}
-          />
-        ) : (
-          ""
-        )}
-      </div>
+
+          {myDocs.length ? (
+            <div className="docs-list">
+              {myDocs.map((docItem) => (
+                <article className="doc-card" key={docItem.id}>
+                  <div className="doc-card-copy">
+                    <div className="doc-card-meta">
+                      <strong>{docItem.isProtected ? "Protected" : "Open"}</strong>
+                      <span>{docItem.readonly ? "Read-only" : "Editable"}</span>
+                    </div>
+                    <h4>{docItem.file?.length ? `${docItem.file.length} file share` : "Text note"}</h4>
+                    {/* <p>{formatDocPreview(docItem)}</p> */}
+                  </div>
+
+                  <div className="doc-card-footer">
+                    <span>{formatDocDate(docItem.createdAt)}</span>
+                    <div className="doc-card-actions">
+                      <button type="button" onClick={() => copyDocLink(docItem)}>
+                        Copy link
+                      </button>
+                      <button type="button" onClick={() => openDocFromList(docItem)}>
+                        Open
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="docs-empty">
+              <p>No saved docs yet. Your next save will appear here automatically.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, forwardRef } from "react";
 import "./style.scss";
 
-const TextArea = forwardRef(({ value, onChangeText }, ref) => {
+const TextArea = forwardRef(({ value, onChangeText, disabled = false }, ref) => {
   const textAreaRef = ref || useRef(); // use passed ref or create fallback
 
   const resizeTextArea = () => {
@@ -20,9 +20,14 @@ const TextArea = forwardRef(({ value, onChangeText }, ref) => {
     <textarea
       ref={textAreaRef}
       value={value}
-      onInput={(e) => onChangeText(e.target.value)}
+      onInput={(e) => {
+        if (!disabled) {
+          onChangeText(e.target.value)
+        }
+      }}
       className='text-area min-h-74'
       placeholder='Type Something here...'
+      disabled={disabled}
     />
   );
 });

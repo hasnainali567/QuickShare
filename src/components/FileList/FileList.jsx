@@ -5,8 +5,8 @@ import './style.scss'
 
 const FileList = ({ files, isSelecting, downloadFun }) => {
   return (
-    <div className="flex flex-wrap ">
-        {files.map((file, i) => <File file={file} key={i} isSelecting={isSelecting} downloadFun={downloadFun} />)}
+    <div className="file-list-grid">
+      {files.map((file, i) => <File file={file} key={i} isSelecting={isSelecting} downloadFun={downloadFun} />)}
     </div>
   )
 };

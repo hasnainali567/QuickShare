@@ -1,14 +1,17 @@
 import { useState } from 'react'
-import { BrowserRouter  } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import './App.css'
 import AppRouter from './config/Router.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
 
 function App() {
 
   return (
-    <BrowserRouter>
-      <AppRouter />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRouter />
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

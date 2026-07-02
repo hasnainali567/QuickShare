@@ -1,3 +1,133 @@
+.save-modal {
+  .ant-modal-content {
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 19, 23, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+    box-shadow: 0 30px 80px rgba(19, 23, 32, 0.2);
+    backdrop-filter: blur(18px);
+  }
+
+  .ant-modal-header {
+    background: transparent;
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .ant-modal-title {
+    color: #101114;
+  }
+
+  .popup-title {
+    margin: 0;
+    color: #101114;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+  }
+
+  .ant-modal-body {
+    padding-top: 8px;
+  }
+
+  .save-modal-copy {
+    margin: 0 0 16px;
+    color: #5a6270;
+    line-height: 1.7;
+  }
+
+  .save-modal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 18px;
+    background: rgba(96, 80, 214, 0.05);
+    border: 1px solid rgba(96, 80, 214, 0.08);
+  }
+
+  .add-pass {
+    color: #1f2937;
+  }
+
+  .read-only {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(15, 19, 23, 0.04);
+    border: 1px solid rgba(15, 19, 23, 0.06);
+
+    h4 {
+      margin: 0;
+      color: #2b3340;
+    }
+  }
+
+  .form-item {
+    margin-bottom: 12px;
+  }
+
+  .ant-input-affix-wrapper {
+    min-height: 52px;
+    border-radius: 16px;
+    border: 1px solid rgba(15, 19, 23, 0.12);
+    box-shadow: none;
+
+    &:hover {
+      border-color: rgba(96, 80, 214, 0.24);
+    }
+
+    &.ant-input-affix-wrapper-focused {
+      border-color: rgba(96, 80, 214, 0.5);
+      box-shadow: 0 0 0 4px rgba(96, 80, 214, 0.1);
+    }
+
+    .ant-input {
+      font-size: 1rem;
+    }
+  }
+
+  .ant-modal-footer {
+    border-top: 0;
+    padding-top: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .ant-btn {
+    min-height: 48px;
+    border-radius: 16px;
+    padding-inline: 18px;
+    font-weight: 700;
+  }
+
+  .ant-btn-default {
+    background: rgba(15, 19, 23, 0.05);
+    border: 1px solid rgba(15, 19, 23, 0.08);
+    color: #374151;
+
+    &:hover {
+      background: rgba(15, 19, 23, 0.08) !important;
+      border-color: rgba(15, 19, 23, 0.12) !important;
+      color: #111827 !important;
+    }
+  }
+
+  .ant-btn-primary {
+    background: linear-gradient(135deg, #6050d6, #f3a14c);
+    border: 0;
+    color: #fff;
+    box-shadow: 0 14px 28px rgba(96, 80, 214, 0.22);
+
+    &:hover {
+      color: #fff !important;
+      background: linear-gradient(135deg, #5a49cc, #ef9d44) !important;
+      box-shadow: 0 18px 34px rgba(96, 80, 214, 0.28);
+    }
+  }
+}
+
 .ant-btn-primary {
   font-size: large;
   font-weight: 500;
@@ -56,6 +186,52 @@
 
 
 .dark {
+  .save-modal {
+    .ant-modal-content {
+      background: linear-gradient(180deg, rgba(9, 12, 17, 0.98), rgba(9, 12, 17, 0.92)) !important;
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .ant-modal-title,
+    .popup-title,
+    .save-modal-copy,
+    .add-pass,
+    .read-only h4 {
+      color: #f5f7fb !important;
+    }
+
+    .save-modal-copy {
+      color: #bac3d1 !important;
+    }
+
+    .save-modal-row {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .read-only {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .ant-input-affix-wrapper {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #f5f7fb;
+    }
+
+    .ant-btn-default {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #f5f7fb;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+      }
+    }
+  }
+
   .ant-modal-content {
     background-color: rgb(26, 26, 26) !important;
     .popup-title {
@@ -92,7 +268,7 @@
     .ant-btn-primary {
       font-size: large;
       font-weight: 500;
-      background-color: #77bdff;
+      background-color: #6050D6;
       color: white;
       padding: 20px 30px;
 
@@ -109,9 +285,9 @@
     .ant-btn-default {
       font-size: medium;
       padding: 20px 20px;
-      
+
       &:hover {
-        color: #77bdff;
+        color: #6050D6;
       }
     }
 
@@ -126,7 +302,7 @@
     }
 
     .ant-switch-checked {
-      background-color: #77bdff !important;
+      background-color: #6050D6 !important;
       &:hover {
         background-color: #569bdb !important;
       }

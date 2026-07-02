@@ -47,14 +47,14 @@ const File = ({ file, isSelecting = true, downloadFun }) => {
 
   return (
     <div
-      className="files relative cursor-pointer"
+      className="file-card relative cursor-pointer"
     >
       {isLoading ? (
         <div className="flex justify-center items-center h-24 w-full">
           <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : isImage ? (
-        <div className="img-file relative">
+        <div className="file-preview relative">
           {isSelecting && (
             <div onClick={handleSingle} className="absolute h-full w-full opacity-0 hover:opacity-75 transition-opacity duration-200 ease-in-out ">
               <div className="flex justify-center items-center h-full">
@@ -63,11 +63,11 @@ const File = ({ file, isSelecting = true, downloadFun }) => {
             </div>
           )}
 
-          <img src={file.file} alt={file.name}  />
+          <img src={file.file} alt={file.name} />
         </div>
       ) : (
-        <div className="files relative flex items-center gap-2 p-2  border border-gray-200">
-          
+        <div className="file-meta relative flex items-center gap-3">
+
 
           {getFileIcon(extension)}
           <p className="file-name text-gray-600 z-10">

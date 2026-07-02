@@ -8,7 +8,7 @@ const PopUp = ({ open, onClose, onSave }) => {
   const [password, setPassword] = useState("");
   const [checked, setChecked] = useState(false);
   const [readonly, setReadonly] = useState(false);
-  const {saving, setSaving} = useSaving(false);
+  const { saving, setSaving } = useSaving(false);
 
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
   const isValid = passwordRegex.test(password);
@@ -36,7 +36,7 @@ const PopUp = ({ open, onClose, onSave }) => {
   };
   return (
     <Modal
-      className='moda'
+      className='save-modal'
       title={<p className='popup-title text-lg font-bold'>Save the Document</p>}
       open={open}
       onCancel={handleClose}
@@ -55,7 +55,9 @@ const PopUp = ({ open, onClose, onSave }) => {
         </Button>,
       ]}
     >
-      <div className=' flex justify-between p-2 px-0'>
+      <p className='save-modal-copy'>Add an optional password and read-only lock before saving.</p>
+
+      <div className='save-modal-row'>
         <span className='font-semibold add-pass mr-2'>Add password?</span>
         <Switch checked={checked} onChange={(val) => setChecked(val)} />
       </div>
