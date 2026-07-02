@@ -33,8 +33,8 @@ QuickShare is a modern, lightweight web app that lets users share sensitive info
 
 ## 📷 Preview
 
-![QuickShare Preview - Light](./assets/preview-light.png)
-![QuickShare Preview - Dark](./assets/preview-dark.png)
+![QuickShare Preview - Light](./src/assets/preview-light.png)
+![QuickShare Preview - Dark](./src/assets/preview-dark.png)
 
 ---
 
