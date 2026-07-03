@@ -1,6 +1,6 @@
 import { createContext, useState, useContext } from "react";
 
-const SavingContext = createContext();
+const SavingContext = createContext({ saving: false, setSaving: () => {} });
 
 export const SavingProvider = ({ children }) => {
   const [saving, setSaving] = useState(false);
