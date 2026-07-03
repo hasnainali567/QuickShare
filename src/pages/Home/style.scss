@@ -205,6 +205,8 @@
 
     .dropzone,
     .drop-zone {
+      width: 100%;
+      min-height: 100% !important;
       border: 1.5px dashed rgba(96, 80, 214, 0.2);
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.72));
       display: flex;
@@ -245,8 +247,8 @@
       gap: 14px;
 
       .dropzone {
-        width: 140px;
-        height: 140px;
+        width: 152px !important;
+        height: 152px;
         cursor: pointer;
         transition: all 0.2s ease;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.8));
@@ -404,7 +406,7 @@
 
     .docs-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
       gap: 14px;
     }
 
@@ -790,7 +792,7 @@
         border-radius: 18px;
 
         div p {
-          width: 88%;
+          width: 100%;
           font-size: 0.95rem;
           line-height: 1.65;
         }
