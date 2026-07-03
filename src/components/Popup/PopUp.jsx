@@ -8,7 +8,7 @@ const PopUp = ({ open, onClose, onSave }) => {
   const [password, setPassword] = useState("");
   const [checked, setChecked] = useState(false);
   const [readonly, setReadonly] = useState(false);
-  const { saving, setSaving } = useSaving(false);
+  const { saving, setSaving } = useSaving();
 
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
   const isValid = passwordRegex.test(password);
