@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import {
     auth,
     googleProvider,
@@ -24,21 +24,19 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe
     }, [])
 
-    const value = useMemo(() => {
-        const signUp = (email, password) => createUserWithEmailAndPassword(auth, email, password)
-        const signIn = (email, password) => signInWithEmailAndPassword(auth, email, password)
-        const signInWithGoogle = () => signInWithPopup(auth, googleProvider)
-        const logOut = () => signOut(auth)
+    const signUp = useCallback((email, password) => createUserWithEmailAndPassword(auth, email, password), [])
+    const signIn = useCallback((email, password) => signInWithEmailAndPassword(auth, email, password), [])
+    const signInWithGoogle = useCallback(() => signInWithPopup(auth, googleProvider), [])
+    const logOut = useCallback(() => signOut(auth), [])
 
-        return {
-            user,
-            loading,
-            signUp,
-            signIn,
-            signInWithGoogle,
-            signOut: logOut,
-        }
-    }, [loading, user])
+    const value = useMemo(() => ({
+        user,
+        loading,
+        signUp,
+        signIn,
+        signInWithGoogle,
+        signOut: logOut,
+    }), [user, loading, signUp, signIn, signInWithGoogle, logOut])
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
