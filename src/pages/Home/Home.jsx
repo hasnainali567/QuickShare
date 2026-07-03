@@ -51,7 +51,12 @@ const Home = () => {
   const { user } = useAuth();
   const [readonly, setReadonly] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const fileCountRef = useRef(0);
   const passRef = useRef(null);
+
+  useEffect(() => {
+    fileCountRef.current = file.length;
+  }, [file]);
   const docIdRef = useRef(null);
   const textAreaRef = useRef(null);
   const popupSaveRef = useRef(null);
@@ -59,11 +64,13 @@ const Home = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
-  const [isProtected, setIsProtected] = useState(searchParams.get("protected"));
+  const isProtectedFromUrl = searchParams.get("protected");
+  const isProtected = Boolean(isProtectedFromUrl);
   const isLockedProtectedDoc = Boolean(id && isProtected && !startListening);
   const isReadOnlyDoc = Boolean(readonly && docIdRef.current);
 
   useEffect(() => {
+    console.log("id changed, clearing state, new id:", id);
     setValue("");
     setfile([]);
     setUrls([]);
@@ -74,7 +81,7 @@ const Home = () => {
     setInitialEncryptedText(null);
     setReadonly(false);
     passRef.current = null;
-    docIdRef.current = null;
+    docIdRef.current = id; // Set immediately so onSnapshot can use it
 
     if (textAreaRef.current) {
       textAreaRef.current.value = "";
@@ -131,7 +138,6 @@ const Home = () => {
         if (docSnap.exists()) {
           setInitialEncryptedText(docSnap.data().text);
           setReadonly(Boolean(docSnap.data()?.readonly));
-          docIdRef.current = id;
           setShareableUrl(`${window.location.origin}/?id=${id}&protected=true`);
         }
       } catch (e) {
@@ -142,12 +148,17 @@ const Home = () => {
     fetchProtectedData();
   }, [isProtected, id]);
 
-  useEffect(() => {
+useEffect(() => {
     if (isProtected || !id) return;
     async function fetchDocState() {
+      console.log("fetchDocState called for id:", id);
       const docSnap = await getDoc(doc(db, "text", id));
       if (docSnap.exists()) {
-        setReadonly(Boolean(docSnap.data()?.readonly));
+        const data = docSnap.data();
+        console.log("fetchDocState found doc:", data);
+        setReadonly(Boolean(data?.readonly));
+      } else {
+        console.log("fetchDocState: doc not found");
       }
       setHasSavedBefore(true);
       docIdRef.current = id;
@@ -157,9 +168,10 @@ const Home = () => {
     fetchDocState();
   }, [id, isProtected]);
 
-  async function checkIfCollectionExists(collectionName) {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    return !querySnapshot.empty;
+  async function checkIfDocExists(docId) {
+    if (!docId) return false;
+    const docSnap = await getDoc(doc(db, "text", docId));
+    return docSnap.exists();
   }
 
   const saveTextBtn = async () => {
@@ -209,18 +221,12 @@ const Home = () => {
             await updateDoc(doc(db, "text", docId), {
               text: encryptedText,
               readonly: readonly,
-              ownerUid: user?.uid,
-              ownerEmail: user?.email || null,
-              ownerName: user?.displayName || user?.email || "QuickShare user",
             });
           } else if (type === 'file') {
             await updateDoc(doc(db, "text", docId), {
               text: encryptedText,
               file: file,
               readonly: readonly,
-              ownerUid: user?.uid,
-              ownerEmail: user?.email || null,
-              ownerName: user?.displayName || user?.email || "QuickShare user",
             });
           }
         } else {
@@ -228,9 +234,6 @@ const Home = () => {
             text: value,
             file: file,
             readonly: readonly,
-            ownerUid: user?.uid,
-            ownerEmail: user?.email || null,
-            ownerName: user?.displayName || user?.email || "QuickShare user",
           });
         }
         messageApi.destroy();
@@ -289,9 +292,7 @@ const Home = () => {
 
   }
 
-  useEffect(() => {
-    localStorage.setItem('theme', 'dark')
-  }, [])
+  
 
   useEffect(() => {
     if (!file) return;
@@ -308,50 +309,47 @@ const Home = () => {
 
       return;
     }
-    if (!docIdRef.current || passRef.current || isProtected) return;
+    if (!docIdRef.current) return;
+
     const docRef = doc(db, "text", docIdRef.current);
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        console.log(docSnap.data());
+        console.log("onSnapshot fired for doc:", docIdRef.current);
+        console.log("doc data:", docSnap.data());
 
-        let text = docSnap.data().text;
-        setValue(text);
-        let file = docSnap.data().file;
-        setfile(file);
-        setReadonly(Boolean(docSnap.data()?.readonly));
-        let urls = extractUrls(text);
-        setUrls([...new Set(urls)]);
+        const data = docSnap.data();
+        let text = data.text;
+        let fileData = data.file;
+        const isReadonly = Boolean(data?.readonly);
+        const docIsProtected = Boolean(data?.isProtected);
+
+        console.log("Setting value:", text ? text.substring(0, 50) : "empty", "protected:", docIsProtected);
+
+        setfile(fileData);
+        setReadonly(isReadonly);
+        setUrls([...new Set(extractUrls(text))]);
+
+        if (passRef.current && docIsProtected) {
+          try {
+            const decrypted = secureDecrypt(text, passRef.current);
+            setValue(decrypted);
+          } catch (e) {
+            setValue("[Encrypted - enter password]");
+          }
+        } else {
+          setValue(text);
+        }
+
         if (value) {
           setBtnText("Copy");
         }
+      } else {
+        console.log("Document does not exist:", docIdRef.current);
       }
     });
     return () => unsubscribe();
-  }, [isProtected, messageApi]);
-
-
-
-
-
-  useEffect(() => {
-    if (!startListening) return;
-    const docRef = doc(db, "text", docIdRef.current);
-
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        let text = docSnap.data().text;
-        let decrypted = secureDecrypt(text, passRef.current);
-        setValue(decrypted);
-        setUrls([...new Set(extractUrls(decrypted))]);
-        setBtnText("Copy");
-        let file = docSnap.data().file;
-        setfile(file);
-        setReadonly(Boolean(docSnap.data()?.readonly));
-      }
-    });
-    return () => unsubscribe();
-  }, [startListening]);
+  }, [id, messageApi, passRef.current, startListening]);
 
   const convertToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -374,7 +372,7 @@ const Home = () => {
       return;
     }
 
-    if (acceptedFiles && acceptedFiles.length + file.length > 2) {
+    if (acceptedFiles && acceptedFiles.length + fileCountRef.current > 2) {
       messageApi.destroy();
       messageApi.open({
         type: "error",
@@ -403,7 +401,7 @@ const Home = () => {
       })
     );
 
-    let updatedFiles = [...file, ...base64Files];
+    let updatedFiles = [...file.slice(0, fileCountRef.current), ...base64Files];
     if (updatedFiles.length > 2) {
       updatedFiles = updatedFiles.slice(0, 2);
     }
@@ -425,7 +423,7 @@ const Home = () => {
         setSaving(false);
         return;
       }
-      let isDocExist = await checkIfCollectionExists("text");
+      let isDocExist = await checkIfDocExists(docIdRef.current);
       if (isDocExist && docIdRef.current) {
         await updateDoc(doc(db, "text", docIdRef.current), {
           file: arrayUnion(...base64Files),
@@ -489,7 +487,7 @@ const Home = () => {
         duration: 0,
       });
 
-      let isDocExist = await checkIfCollectionExists("text");
+      let isDocExist = await checkIfDocExists(docIdRef.current);
 
       if (isDocExist) {
         if (type === 'text') {
@@ -521,7 +519,7 @@ const Home = () => {
   };
 
   const extractUrls = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urlRegex = /(https?:\/\/|www\.)[^\s<>"{}|\\^`\[\]]+/g;
     return text.match(urlRegex) || [];
   };
 
@@ -566,7 +564,7 @@ const Home = () => {
           text: encryptedText,
           file: file,
           readonly: readonly,
-          isProtected,
+          isProtected: true,
           ownerUid: user?.uid,
           ownerEmail: user?.email || null,
           ownerName: user?.displayName || user?.email || "QuickShare user",
@@ -582,6 +580,7 @@ const Home = () => {
           text: value,
           file: file,
           readonly: readonly,
+          isProtected: false,
           ownerUid: user?.uid,
           ownerEmail: user?.email || null,
           ownerName: user?.displayName || user?.email || "QuickShare user",
@@ -620,7 +619,7 @@ const Home = () => {
 
     const key = CryptoJS.PBKDF2(password, salt, {
       keySize: 256 / 32, // 256-bit key
-      iterations: 10000, // 10x more secure than default
+      iterations: 100000,
     });
 
     const iv = CryptoJS.lib.WordArray.random(128 / 8);
@@ -647,7 +646,7 @@ const Home = () => {
 
       const key = CryptoJS.PBKDF2(password, salt, {
         keySize: 256 / 32, // 256-bit key
-        iterations: 10000, // Must match encryption iterations
+        iterations: 100000, // Must match encryption iterations
         hasher: CryptoJS.algo.SHA256,
       });
 
@@ -756,7 +755,9 @@ const Home = () => {
   };
 
   const formatDocPreview = (docItem) => {
-    if (docItem.isProtected) {
+    // Check if protected via field or if text looks encrypted (contains | separators)
+    const isProtected = docItem.isProtected || (docItem.text && docItem.text.includes("|") && docItem.text.split("|").length === 3);
+    if (isProtected) {
       return "Protected document";
     }
 
@@ -986,7 +987,7 @@ const Home = () => {
                       <span>{docItem.readonly ? "Read-only" : "Editable"}</span>
                     </div>
                     <h4>{docItem.file?.length ? `${docItem.file.length} file share` : "Text note"}</h4>
-                    {/* <p>{formatDocPreview(docItem)}</p> */}
+                    <p>{formatDocPreview(docItem)}</p>
                   </div>
 
                   <div className="doc-card-footer">
@@ -1015,3 +1016,5 @@ const Home = () => {
 };
 
 export default Home;
+
+
