@@ -1,30 +1,94 @@
-.drop-zone {
-    border: 1.5px dashed rgb(211, 211, 211);
+.dropzone {
+    width: 152px;
+    min-height: 152px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 20px;
-    height: 70%;
-    div {
-        display: flex;
-        justify-content: center;
-        p{
-        width: 70%;
-        text-align: center;
-        font-weight: 300;
-        font-size: 18px;
-        line-height: 35px;
-        color: rgb(153, 153, 153);
-        span {
-            color: #6050D6;
-            cursor: pointer;
-        }
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    border-radius: 22px;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.84));
+    border: 1.5px dashed rgba(96, 80, 214, 0.4);
+    box-shadow: 0 12px 30px rgba(19, 23, 32, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    box-sizing: border-box;
+
+    &:hover {
+        background-color: rgba(96, 80, 214, 0.05);
+        border-color: rgba(96, 80, 214, 0.8);
+        transform: translateY(-2px);
+        box-shadow: 0 16px 36px rgba(19, 23, 32, 0.1);
     }
+
+    &.drag-active {
+        border-color: rgba(96, 80, 214, 1);
+        background-color: rgba(96, 80, 214, 0.1);
+    }
+
+    &.dropzone-disabled {
+        opacity: 0.75;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 }
 
-.drop-zone-disabled {
-    opacity: 0.75;
-    cursor: not-allowed;
+.dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    color: #6050D6;
     pointer-events: none;
+}
+
+.dropzone-icon {
+    font-size: 44px;
+    color: #6050D6;
+}
+
+.dropzone-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.dropzone-text span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.dropzone-text span:last-child {
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280;
+}
+
+.dark {
+    .dropzone {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.15);
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .dropzone-icon {
+            color: #a78bfa;
+        }
+
+        .dropzone-text span {
+            color: #e5e7eb;
+        }
+
+        .dropzone-text span:last-child {
+            color: #9ca3af;
+        }
+    }
 }
