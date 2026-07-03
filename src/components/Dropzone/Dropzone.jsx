@@ -11,9 +11,9 @@ function Dropzone({ title, onDrop, className, disabled = false }) {
   })
 
   return (
-    <div className={className} {...getRootProps({ onClick: disabled ? (event) => event.preventDefault() : undefined })}>
+    <div className={`file-card ${className || ''}`} {...getRootProps({ onClick: disabled ? (event) => event.preventDefault() : undefined })}>
       <input {...getInputProps()} />
-      <div>
+      <div className="dropzone-content">
         {title}
       </div>
     </div>
