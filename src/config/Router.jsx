@@ -4,6 +4,12 @@ import { Home, Landing, Auth } from '../pages';
 import { AppLayout } from '../components';
 import { useAuth } from '../context/AuthContext.jsx';
 
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+  </div>
+);
+
 const RootRoute = () => {
   const [searchParams] = useSearchParams()
   const hasSharedContent = Boolean(searchParams.get('id') || searchParams.get('protected'))
@@ -11,7 +17,7 @@ const RootRoute = () => {
   const location = useLocation()
 
   if (loading) {
-    return null
+    return <LoadingScreen />
   }
 
   if (hasSharedContent && !user) {
@@ -30,7 +36,7 @@ const RequireAuth = ({ children }) => {
   const location = useLocation()
 
   if (loading) {
-    return null
+    return <LoadingScreen />
   }
 
   if (!user) {
